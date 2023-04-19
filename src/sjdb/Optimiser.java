@@ -136,6 +136,8 @@ public class Optimiser implements PlanVisitor {
         if (op instanceof Project) {
             result.addAll(((Project) op).getAttributes());
         }
+
+        result.addAll(finalAttributes);
         return result;
     }
 
@@ -146,7 +148,13 @@ public class Optimiser implements PlanVisitor {
         if (result.getOutput() == null ) result.accept(es);
         projectAttributes.retainAll(result.getOutput().getAttributes());
 
-        result = projectAttributes.size() > 0 ? new Project(result, projectAttributes) : result;
+//        result = projectAttributes.size() > 0 && projectAttributes.size() < result.getOutput().getAttributes().size() ? new Project(result, projectAttributes) : result;
+
+        // note that for q5, it will be select all
+        // so if it is scan, we will make a project anyway
+        result = projectAttributes.size() > 0 && (projectAttributes.size() < result.getOutput().getAttributes().size() || op instanceof Scan) ? new Project(result, projectAttributes) : result;
+
+        if (result.getOutput() == null ) result.accept(es);
         return result;
     }
 
@@ -192,13 +200,65 @@ public class Optimiser implements PlanVisitor {
 //                        System.out.println("remainOps:"+ remainOpsCopy);
 //                        joinQueue.add(new AbstractMap.SimpleEntry<>(leftOp, remainOpsCopy));
 //                        System.out.println("size:"+ joinQueue.size());
-                        Operator leftProjectOp = moveDownProject(leftOp, getProjectedAttributeSet(new ArrayList<>(predicateSetCopy), leftOp));
 
 
-                        Operator newOp = findJoinOrProductPredicate(leftOp, rightOp, predicates);
+//                        Operator newOp = findJoinOrProductPredicate(leftOp, rightOp, predicates);
+
+                        if (leftOp.getOutput() == null ) leftOp.accept(es);
+
+                        Operator newOp = null;
+
+                        List<Attribute> attributes1 = leftOp.getOutput().getAttributes();
+                        List<Attribute> attributes2 = rightOp.getOutput().getAttributes();
+
+                        for (Predicate predicate : predicateSet) {
+                            if (attributes1.contains(predicate.getLeftAttribute()) && attributes2.contains(predicate.getRightAttribute())) {
+
+                                Operator leftProjectOp = moveDownProject(leftOp, getProjectedAttributeSet(new ArrayList<>(predicateSetCopy), leftOp));
+                                Operator rightProjectOp = moveDownProject(rightOp, getProjectedAttributeSet(new ArrayList<>(predicateSetCopy), rightOp));
+                                newOp = new Join(leftProjectOp, rightProjectOp, predicate);
+
+                            }
+                            // TODO: check if this is correct
+                            else if (attributes1.contains(predicate.getRightAttribute()) && attributes2.contains(predicate.getLeftAttribute())) {
+//                                predicateSetCopy.remove(predicate);
+//                                System.out.println("predicateSetCopy:"+ predicateSetCopy);
+                                Operator leftProjectOp = moveDownProject(leftOp, getProjectedAttributeSet(new ArrayList<>(predicateSetCopy), leftOp));
+                                Operator rightProjectOp = moveDownProject(rightOp, getProjectedAttributeSet(new ArrayList<>(predicateSetCopy), rightOp));
+                                newOp = new Join(rightProjectOp, leftProjectOp, predicate);
+
+                            }
+
+                            predicateSetCopy.remove(predicate);
+                            System.out.println("predicateSetCopy:"+ predicateSetCopy);
+                            if (newOp != null) {
+                System.out.println("newOp:"+ newOp);
+                                if (newOp.getOutput() == null ) newOp.accept(es);
+//                System.out.println("--------------result-------------------");
+                                newOp.accept(inspector);
+//                System.out.println("--------------end result-------------------");
+                                break;
+                            }
+                        }
+
+
+                        if (newOp == null) {
+                            newOp = new Product(leftOp, rightOp);
+                            if (newOp.getOutput() == null ) newOp.accept(es);
+                        }
+
+                        System.out.println("--------------result-------------------");
+                        newOp.accept(inspector);
+                        System.out.println("--------------end result-------------------");
+
+
+
+
                         remainOpsCopy.remove(rightOp);
                         joinQueue.add(new AbstractMap.SimpleEntry<>(newOp, remainOpsCopy));
-                        System.out.println("joinQueue.key: " + newOp);
+
+                        predicateQueue.add(predicateSetCopy);
+
 
                     }
 
@@ -213,6 +273,7 @@ public class Optimiser implements PlanVisitor {
         }
 
         result = new Project(result, new ArrayList<>(finalAttributes));
+        result.accept(es);
         return result;
     }
 
