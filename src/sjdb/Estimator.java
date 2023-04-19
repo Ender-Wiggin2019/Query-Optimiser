@@ -11,7 +11,7 @@ public class Estimator implements PlanVisitor {
 		// empty constructor
 	}
 
-	/* 
+	/*
 	 * Create output relation on Scan operator
 	 *
 	 * Example implementation of visit method for Scan operators.
@@ -19,12 +19,12 @@ public class Estimator implements PlanVisitor {
 	public void visit(Scan op) {
 		Relation input = op.getRelation();
 		Relation output = new Relation(input.getTupleCount());
-		
+
 		Iterator<Attribute> iter = input.getAttributes().iterator();
 		while (iter.hasNext()) {
 			output.addAttribute(new Attribute(iter.next()));
 		}
-		
+
 		op.setOutput(output);
 	}
 
@@ -45,34 +45,34 @@ public class Estimator implements PlanVisitor {
 		op.setOutput(output);
 
 	}
-	
+
 	public void visit(Select op) {
+
 		Relation input = op.getInput().getOutput();
 		Relation output;
 		Iterator<Attribute> iter = input.getAttributes().iterator();
 		int value;
 
 		Predicate predicate = op.getPredicate();
+		Attribute leftAttribute = input.getAttribute(predicate.getLeftAttribute());
+
 		if (predicate.equalsValue()) {
 			// attr=value
-			Attribute leftAttribute = predicate.getLeftAttribute();
-			String rightValue = predicate.getRightValue();
-
 			//T(σA=c(R)) = T(R)/V(R,A)
 			output = new Relation(input.getTupleCount() / leftAttribute.getValueCount());
 			// V(σA=c(R),A) = 1
 			value = 1;
 
 			while (iter.hasNext()) {
-				Attribute newAttribute = iter.next().equals(leftAttribute) ?
+				Attribute attribute = iter.next();
+				Attribute newAttribute = attribute.equals(leftAttribute) ?
 						new Attribute(leftAttribute.getName(), value) :
-						new Attribute(iter.next());
+						new Attribute(attribute);
 				output.addAttribute(newAttribute);
 			}
 		} else {
 			// attr=attr
-			Attribute leftAttribute = predicate.getLeftAttribute();
-			Attribute rightAttribute = predicate.getRightAttribute();
+			Attribute rightAttribute = input.getAttribute(predicate.getRightAttribute());
 
 			// T(σA=B(R)) = T(R)/max(V(R,A),V(R,B))
 			output = new Relation(input.getTupleCount() / Math.max(leftAttribute.getValueCount(), rightAttribute.getValueCount()));
@@ -80,18 +80,19 @@ public class Estimator implements PlanVisitor {
 			value = Math.min(leftAttribute.getValueCount(), rightAttribute.getValueCount());
 
 			while (iter.hasNext()) {
-				Attribute newAttribute = iter.next().equals(leftAttribute) ?
+				Attribute attribute = iter.next();
+				Attribute newAttribute = attribute.equals(leftAttribute) ?
 						new Attribute(leftAttribute.getName(), value) :
-						iter.next().equals(leftAttribute) ?
+						attribute.equals(rightAttribute) ?
 								new Attribute(rightAttribute.getName(), value) :
-								new Attribute(iter.next());
+								new Attribute(attribute);
 				output.addAttribute(newAttribute);
 			}
 		}
 
 		op.setOutput(output);
 	}
-	
+
 	public void visit(Product op) {
 		// T(R × S) = T(R)T(S)
 		Relation leftInput = op.getLeft().getOutput();
@@ -110,17 +111,19 @@ public class Estimator implements PlanVisitor {
 
 		op.setOutput(output);
 	}
-	
+
 	public void visit(Join op) {
 		// T(R ⋈ S) = T(R)T(S)/max(V(R,A),V(S,B))
 		Relation leftInput = op.getLeft().getOutput();
 		Relation rightInput = op.getRight().getOutput();
 
 		Predicate predicate = op.getPredicate();
-		Attribute leftAttribute = predicate.getLeftAttribute();
-		Attribute rightAttribute = predicate.getRightAttribute();
+		Attribute leftAttribute = leftInput.getAttribute(predicate.getLeftAttribute());
+		Attribute rightAttribute = rightInput.getAttribute(predicate.getRightAttribute());
 		int value = Math.min(leftAttribute.getValueCount(), rightAttribute.getValueCount());
 
+//		System.out.println("leftAttribute: " + leftAttribute + leftAttribute.getValueCount());
+//		System.out.println("rightAttribute: " + rightAttribute + rightAttribute.getValueCount());
 		// V(R⨝A=BS,A) = V(R⨝A=BS,B) = min(V(R,A), V(S,B))
 		Relation output = new Relation(leftInput.getTupleCount() * rightInput.getTupleCount() /
 				Math.max(leftAttribute.getValueCount(), rightAttribute.getValueCount()));
@@ -128,15 +131,17 @@ public class Estimator implements PlanVisitor {
 		Iterator<Attribute> iterLeft = leftInput.getAttributes().iterator();
 		Iterator<Attribute> iterRight = rightInput.getAttributes().iterator();
 		while (iterLeft.hasNext()) {
-			Attribute newAttribute = iterLeft.next().equals(leftAttribute) ?
+			Attribute attribute = iterLeft.next();
+			Attribute newAttribute = attribute.equals(leftAttribute) ?
 					new Attribute(leftAttribute.getName(), value) :
-					new Attribute(iterLeft.next());
+					new Attribute(attribute);
 			output.addAttribute(newAttribute);
 		}
 		while (iterRight.hasNext()){
-			Attribute newAttribute = iterRight.next().equals(rightAttribute) ?
+			Attribute attribute = iterRight.next();
+			Attribute newAttribute = attribute.equals(rightAttribute) ?
 					new Attribute(rightAttribute.getName(), value) :
-					new Attribute(iterRight.next());
+					new Attribute(attribute);
 			output.addAttribute(newAttribute);
 		}
 

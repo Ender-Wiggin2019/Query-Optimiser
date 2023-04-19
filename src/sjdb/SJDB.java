@@ -27,7 +27,7 @@ public class SJDB {
 //		QueryParser queryParser = new QueryParser(cat, new InputStreamReader(System.in));
 
 		// TODO: for test
-		QueryParser queryParser = new QueryParser(cat, new FileReader(new File("data/q1.txt")));
+		QueryParser queryParser = new QueryParser(cat, new FileReader(new File("data/q5.txt")));
 
 		Operator plan = queryParser.parse();
 
@@ -36,12 +36,12 @@ public class SJDB {
 		System.out.println(plan.toString());
 				
 		// create estimator visitor and apply it to canonical plan
-		//Estimator est = new Estimator();
-		//plan.accept(est);
+		Estimator est = new Estimator();
+		plan.accept(est);
 		
 		// create optimised plan
-		//Optimiser opt = new Optimiser(cat);
-		//Operator optPlan = opt.optimise(plan);
+		Optimiser opt = new Optimiser(cat);
+		Operator optPlan = opt.optimise(plan);
 	}
 
 }
