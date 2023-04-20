@@ -10,17 +10,16 @@ import java.util.stream.Collectors;
 public class Optimiser implements PlanVisitor {
     private final Estimator es = new Estimator();
 //    private Inspector inspector = new Inspector(); // debug only
-    private final Set<Attribute> attributeSet = new HashSet<>();
+
     private final Set<Predicate> predicateSet = new HashSet<>();
     private final Set<Scan> scanSet = new HashSet<>();
-    private List<Attribute> finalAttributes = new ArrayList<>();
+    private List<Attribute> finalAttributes = new ArrayList<>(); // the top level project attributes if exists
 
     public void visit(Scan op) {
         scanSet.add(new Scan((NamedRelation) op.getRelation()));
     }
 
     public void visit(Project op) {
-        attributeSet.addAll(op.getAttributes());
         if (finalAttributes.size() == 0) {
             finalAttributes = op.getAttributes();
         }
@@ -35,10 +34,6 @@ public class Optimiser implements PlanVisitor {
 
     public void visit(Select op) {
         predicateSet.add(op.getPredicate());
-        attributeSet.add(op.getPredicate().getLeftAttribute());
-        if( !op.getPredicate().equalsValue() ) {
-            attributeSet.add(op.getPredicate().getRightAttribute());
-        }
     }
 
     public Optimiser(Catalogue catalogue) {
