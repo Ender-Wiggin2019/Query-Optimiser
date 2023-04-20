@@ -27,7 +27,7 @@ public class SJDB {
 //		QueryParser queryParser = new QueryParser(cat, new InputStreamReader(System.in));
 
 		// TODO: for test
-		QueryParser queryParser = new QueryParser(cat, new FileReader(new File("data/q5.txt")));
+		QueryParser queryParser = new QueryParser(cat, new FileReader(new File("data/q1.txt")));
 
 		Operator plan = queryParser.parse();
 

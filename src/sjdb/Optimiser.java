@@ -52,19 +52,19 @@ public class Optimiser implements PlanVisitor {
 
 
         projectedAttributeSet = getProjectedAttributeSet(new ArrayList<>(predicateSet), plan);
-        System.out.println("projectedAttributeSet: " + projectedAttributeSet);
-        System.out.println("op after moveDown:"+ list);
-        System.out.println("---------------------------------");
-
-        System.out.println("attributeSet: " + attributeSet);
-        System.out.println("finalAttributes: " + finalAttributes);
-        System.out.println("list: " + list);
-        System.out.println("predicateSetCopy: " + predicateSetCopy);
+//        System.out.println("projectedAttributeSet: " + projectedAttributeSet);
+//        System.out.println("op after moveDown:"+ list);
+//        System.out.println("---------------------------------");
+//
+//        System.out.println("attributeSet: " + attributeSet);
+//        System.out.println("finalAttributes: " + finalAttributes);
+//        System.out.println("list: " + list);
+//        System.out.println("predicateSetCopy: " + predicateSetCopy);
         Operator result = reorder(list, predicateSetCopy);
 
         System.out.println("reorder result: " + result);
         result.accept(es);
-        result.accept(inspector);
+//        result.accept(inspector);
         System.out.println("reorder render: " + result.getOutput().render());
         return result;
     }
@@ -75,10 +75,10 @@ public class Optimiser implements PlanVisitor {
         List<Operator> result = new ArrayList<>();
 
         for (Scan scan : scanSet) {
-            System.out.println("scan before moveDown:"+ scan);
+//            System.out.println("scan before moveDown:"+ scan);
 
             Operator moveDownSelectOp = moveDownSelect(scan, predicateSet);
-            System.out.println("op after moveDownSelect:"+ moveDownSelectOp);
+//            System.out.println("op after moveDownSelect:"+ moveDownSelectOp);
 
             // test only, move down select first:
             result.add(moveDownSelectOp);
@@ -87,10 +87,10 @@ public class Optimiser implements PlanVisitor {
             Operator moveDownProjectOp = moveDownProject(moveDownSelectOp, getProjectedAttributeSet(new ArrayList<>(predicateSet), plan));
 //            result.add(moveDownProjectOp);
 //            System.out.println("op after moveDownProject:"+ moveDownProjectOp);
-            System.out.println("---------------------------------");
+//            System.out.println("---------------------------------");
         }
 
-        System.out.println("predicateSet: " + predicateSet);
+//        System.out.println("predicateSet: " + predicateSet);
 
         return result;
     }
@@ -172,7 +172,7 @@ public class Optimiser implements PlanVisitor {
             Set<Predicate> predicateSet = predicateQueue.poll();
             Operator leftOp = entry.getKey();
             List<Operator> remainOps = entry.getValue();
-            System.out.println("remainOps: " + remainOps.size());
+//            System.out.println("remainOps: " + remainOps.size());
             if (remainOps.size() == 0) {
 //                System.out.println("result: " + leftOp);
 //                System.out.println("value: " + leftOp.getOutput().getTupleCount());
@@ -230,12 +230,12 @@ public class Optimiser implements PlanVisitor {
                             }
 
                             predicateSetCopy.remove(predicate);
-                            System.out.println("predicateSetCopy:"+ predicateSetCopy);
+//                            System.out.println("predicateSetCopy:"+ predicateSetCopy);
                             if (newOp != null) {
-                System.out.println("newOp:"+ newOp);
+//                System.out.println("newOp:"+ newOp);
                                 if (newOp.getOutput() == null ) newOp.accept(es);
 //                System.out.println("--------------result-------------------");
-                                newOp.accept(inspector);
+//                                newOp.accept(inspector);
 //                System.out.println("--------------end result-------------------");
                                 break;
                             }
@@ -247,9 +247,9 @@ public class Optimiser implements PlanVisitor {
                             if (newOp.getOutput() == null ) newOp.accept(es);
                         }
 
-                        System.out.println("--------------result-------------------");
-                        newOp.accept(inspector);
-                        System.out.println("--------------end result-------------------");
+//                        System.out.println("--------------result-------------------");
+//                        newOp.accept(inspector);
+//                        System.out.println("--------------end result-------------------");
 
 
 
@@ -272,15 +272,22 @@ public class Optimiser implements PlanVisitor {
 
         }
 
-        result = new Project(result, new ArrayList<>(finalAttributes));
-        result.accept(es);
+        System.out.println("result: " + result);
+        System.out.println("result.getOutput(): " + finalAttributes);
+        assert result != null;
+        if (result.getOutput().getAttributes().size() > finalAttributes.size() && finalAttributes.size() > 0) {
+           result = new Project(result, new ArrayList<>(finalAttributes));
+           result.accept(es);
+        }
+
+
         return result;
     }
 
     private Operator findJoinOrProductPredicate(Operator op1, Operator op2, Set<Predicate> predicates) {
         Operator result = null;
 
-        System.out.println("predicates: " + predicates);
+//        System.out.println("predicates: " + predicates);
 
         if (op1.getOutput() == null ) op1.accept(es);
         if (op2.getOutput() == null ) op2.accept(es);
@@ -288,13 +295,13 @@ public class Optimiser implements PlanVisitor {
         List<Attribute> attributes2 = op2.getOutput().getAttributes();
 //        System.out.println("attributes1: " + attributes1);
 //        System.out.println("attributes2: " + attributes2);
-        System.out.println("----------------op1-----------------");
-        op1.accept(inspector);
-        System.out.println("----------------op2-----------------");
+//        System.out.println("----------------op1-----------------");
+//        op1.accept(inspector);
+//        System.out.println("----------------op2-----------------");
         op2.accept(inspector);
         for (Predicate predicate : predicates) {
-            System.out.println("-----------------findJoinOrProductPredicate----------------");
-            System.out.println("predicate: " + predicate);
+//            System.out.println("-----------------findJoinOrProductPredicate----------------");
+//            System.out.println("predicate: " + predicate);
 
             if (attributes1.contains(predicate.getLeftAttribute()) && attributes2.contains(predicate.getRightAttribute())) {
                 result = new Join(op1, op2, predicate);
@@ -319,9 +326,9 @@ public class Optimiser implements PlanVisitor {
             if (result.getOutput() == null ) result.accept(es);
         }
 
-        System.out.println("--------------result-------------------");
-        result.accept(inspector);
-        System.out.println("--------------end result-------------------");
+//        System.out.println("--------------result-------------------");
+//        result.accept(inspector);
+//        System.out.println("--------------end result-------------------");
         return result;
     }
 
